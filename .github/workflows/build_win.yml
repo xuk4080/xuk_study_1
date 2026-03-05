@@ -1,0 +1,57 @@
+name: Build Windows EXE
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:   # 允许手动触发
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: 拉取代码
+        uses: actions/checkout@v4
+
+      - name: 配置 Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 安装依赖
+        run: |
+          pip install pyinstaller pyttsx3
+
+      - name: 打包 EXE
+        run: |
+          pyinstaller --onefile --noconsole --name 背单词new `
+            --add-data "inami.db;db" `
+            word_notifier_win.py
+
+      - name: 压缩产物
+        run: |
+          Compress-Archive -Path dist\背单词new.exe -DestinationPath 背单词new_win.zip
+
+      - name: 上传 Artifact（可直接下载）
+        uses: actions/upload-artifact@v4
+        with:
+          name: 背单词new_win
+          path: 背单词new_win.zip
+          retention-days: 30
+
+      - name: 发布 Release（自动覆盖 latest）
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: 背单词new 最新版
+          files: 背单词new_win.zip
+          body: |
+            自动构建的 Windows 版本，双击 exe 即可运行，无需安装 Python。
+            
+            **使用方法：**
+            1. 下载 `背单词new_win.zip`
+            2. 解压
+            3. 双击 `背单词new.exe`
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
